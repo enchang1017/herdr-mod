@@ -1,0 +1,10 @@
+{
+  "place": "none",
+  "title": "Agent Radar",
+  "focusable": true,
+  "overlay": {
+    "kind": "window",
+    "key": "agent-radar-panel",
+    "width": 0.55
+  }
+}

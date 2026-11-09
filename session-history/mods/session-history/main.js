@@ -171,7 +171,7 @@ export default class SessionHistory extends View {
 
   render() {
     const t = theme();
-    return v_flex().id("session-history").track_focus(this.handle).size_full().min_h(0).bg(t.chrome).text_color(t.foreground)
+    return v_flex().id("session-history").track_focus(this.handle).w_full().bg(t.chrome).text_color(t.foreground)
       .on_key_down((e, cx) => this.onKey(e, cx))
       .child(panelView(this, t, this.rows()));
   }

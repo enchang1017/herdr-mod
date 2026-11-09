@@ -9,5 +9,6 @@
 - `change-radar`: git change radar, graph and session view.
 - `team`: start and review agent teams.
 - `jira`: Jira board via acli.
+- `agent-radar`: right-edge drawer that pops out when an agent is blocked or done, plus a panel of every agent's status; click or key to jump.
 
 Install: ask your agent to read `~/.config/herdr-app/AGENTS.md` and add the folder.

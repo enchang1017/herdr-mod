@@ -9,8 +9,12 @@ const CHIP = { working: "working", idle: "idle", blocked: "waiting", done: "done
 
 function programOf(p, native, claude) {
   const own = native?.program ?? p.program ?? null;
-  if (claude && !own?.agent) return { name: "Claude Code", icon: "icons/claude.svg", tint: false, agent: true };
+  if (claude && own?.key !== "claude") return { key: "claude", name: "Claude Code", icon: "icons/claude.svg", tint: false, agent: true };
   return own;
+}
+
+function staleReport(native, claude) {
+  return Boolean(native && claude) && !/^claude/.test(native.app ?? native.program?.key ?? "");
 }
 
 function agentEntry(p, tab, native, claude, deps) {
@@ -25,8 +29,9 @@ function agentEntry(p, tab, native, claude, deps) {
 
 export function entriesOf(tab, ps, native, deps) {
   return ps.filter((p) => p.tab === tab.id && p.terminal).map((p) => {
-    const n = native.get(p.terminal);
     const c = deps.claude.info(p.terminal);
+    const reported = native.get(p.terminal);
+    const n = staleReport(reported, c) ? null : reported;
     if (n || c) return agentEntry(p, tab, n, c, deps);
     const kind = p.program?.shell ? "shell" : "program";
     return { kind, program: p.program ?? null, pane: p.pane, terminal: p.terminal, label: p.program?.name || p.title || p.terminal, status: null, since: null, hint: null, ctx: null };
