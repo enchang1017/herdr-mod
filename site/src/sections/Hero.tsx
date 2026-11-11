@@ -2,7 +2,7 @@ import {Heading} from '@astryxdesign/core/Heading';
 import {Link} from '@astryxdesign/core/Link';
 import {Text} from '@astryxdesign/core/Text';
 import {MODS, REPO_URL} from '../data/mods';
-import {SCREENS} from '../screens';
+import {DEMOS} from '../demos';
 import {InstallBox} from './InstallBox';
 
 interface HeroProps {
@@ -11,7 +11,7 @@ interface HeroProps {
 }
 
 export function Hero({mod, onSelect}: HeroProps) {
-  const Screen = SCREENS[mod];
+  const Demo = DEMOS[mod];
   const info = MODS.find((m) => m.name === mod);
   return (
     <header className="hero" id="demo">
@@ -28,8 +28,8 @@ export function Hero({mod, onSelect}: HeroProps) {
             Read the source on GitHub
           </Link>
         </article>
-        <section className="stage-fig" aria-live="polite" aria-label={`${mod} preview`}>
-          <Screen key={mod} />
+        <section className="stage-fig" role="img" aria-label={`Animated demo of ${mod}: ${info?.does ?? ""}`}>
+          <Demo key={mod} />
           {info && (
             <Text as="p" color="secondary" className="stage-caption">
               <b>{info.name}</b> {info.does} <Text type="code">{info.opens}</Text>

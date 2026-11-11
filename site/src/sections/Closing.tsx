@@ -1,6 +1,6 @@
 import {Heading} from '@astryxdesign/core/Heading';
 import {Text} from '@astryxdesign/core/Text';
-import {SpacesAgentsScreen} from '../screens/agents';
+import {SpacesAgentsDemo} from '../demos/SpacesAgentsDemo';
 import {InstallBox} from './InstallBox';
 
 const GUARDS = [
@@ -38,8 +38,8 @@ export function Closing() {
   return (
     <section className="section closing" id="install" aria-labelledby="install-title">
       <section className="container closing-grid">
-        <section className="closing-fig" aria-label="spaces-agents preview">
-          <SpacesAgentsScreen />
+        <section className="closing-fig" role="img" aria-label="Animated demo of the spaces-agents sidebar">
+          <SpacesAgentsDemo />
         </section>
         <article className="closing-copy">
           <Heading level={2} id="install-title">

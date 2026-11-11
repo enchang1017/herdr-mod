@@ -6,7 +6,7 @@ Ten mods and one layout for [Herdr](https://herdr.dev), the desktop app for term
 
 ![change-radar, simplified: repos with uncommitted, unpushed or unmerged work, with merge request and CI chips](docs/screens/change-radar.png)
 
-The pictures in this README are simplified screens, not screenshots: each one shows a mod's real labels, buttons and size from its `RECIPE.md`, filled with sample data. The site shows the same screens; pick a mod there to switch.
+The pictures in this README are frames from animated demos, not screenshots: each shows a mod with its real labels, filled with sample data. The site plays them; pick a mod there to switch.
 
 ## Install
 

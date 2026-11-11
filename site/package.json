@@ -8,12 +8,13 @@
     "build": "tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node scripts/prerender.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
-    "theme": "astryx theme build theme-src/blueprint.ts --out src/themes/blueprint.css"
+    "theme": "astryx theme build theme-src/console.ts --out src/themes/console.css"
   },
   "dependencies": {
     "@astryxdesign/cli": "^0.7.13",
     "@astryxdesign/core": "^0.7.13",
     "@astryxdesign/theme-neutral": "^0.7.13",
+    "lucide-react": "^0.468.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

@@ -64,9 +64,11 @@ export function InstallBox({mod, onSelect, id}: InstallBoxProps) {
           options={MODS.map((m) => ({value: m.name, label: m.name}))}
         />
       )}
-      <Text as="p" type="label" color="secondary">
-        Say this to the agent running in Herdr
-      </Text>
+      {!onSelect && (
+        <Text as="p" type="label" color="secondary">
+          Say this to the agent running in Herdr
+        </Text>
+      )}
       <pre className="install-cmd">
         <code ref={code}>{prompt}</code>
       </pre>
