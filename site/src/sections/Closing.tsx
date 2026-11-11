@@ -1,6 +1,6 @@
 import {Heading} from '@astryxdesign/core/Heading';
 import {Text} from '@astryxdesign/core/Text';
-import {SidebarDrawing} from '../drawings/SidebarDrawing';
+import {SpacesAgentsScreen} from '../screens/agents';
 import {InstallBox} from './InstallBox';
 
 const GUARDS = [
@@ -9,11 +9,6 @@ const GUARDS = [
   {mod: 'change-radar', text: 'Reads merge requests and pipelines through glab. It never writes to GitLab.'},
 ] as const;
 
-const STEPS = [
-  'Copies the folder into ~/.config/herdr-app/mods.',
-  'Merges keys.json, asking before it takes one of yours.',
-  'Runs herdr-app check.',
-] as const;
 
 export function Guards() {
   return (
@@ -43,12 +38,9 @@ export function Closing() {
   return (
     <section className="section closing" id="install" aria-labelledby="install-title">
       <section className="container closing-grid">
-        <figure className="fig closing-fig">
-          <SidebarDrawing />
-          <figcaption>
-            <Text type="code" color="secondary">Sheet 06, spaces-agents</Text>
-          </figcaption>
-        </figure>
+        <section className="closing-fig" aria-label="spaces-agents preview">
+          <SpacesAgentsScreen />
+        </section>
         <article className="closing-copy">
           <Heading level={2} id="install-title">
             Start with the sidebar
@@ -56,14 +48,7 @@ export function Closing() {
           <Text as="p" type="large" color="secondary" className="lead">
             Its layout comes with it. Add the other nine one at a time.
           </Text>
-          <InstallBox id="install-close" initial="spaces-agents" hasPicker={false} />
-          <ol className="steps-list">
-            {STEPS.map((s) => (
-              <li key={s}>
-                <Text>{s}</Text>
-              </li>
-            ))}
-          </ol>
+          <InstallBox id="install-close" mod="spaces-agents" />
         </article>
       </section>
     </section>

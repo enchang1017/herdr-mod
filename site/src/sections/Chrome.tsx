@@ -14,9 +14,6 @@ export function SiteNav() {
             <Link href="#register">Register</Link>
           </li>
           <li>
-            <Link href="#sheets">Sheets</Link>
-          </li>
-          <li>
             <Link href="#install">Install</Link>
           </li>
           <li>

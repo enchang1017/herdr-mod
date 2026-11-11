@@ -1,13 +1,20 @@
 import {Heading} from '@astryxdesign/core/Heading';
 import {Link} from '@astryxdesign/core/Link';
 import {Text} from '@astryxdesign/core/Text';
-import {GeneralArrangement} from '../drawings/GeneralArrangement';
-import {REPO_URL} from '../data/mods';
+import {MODS, REPO_URL} from '../data/mods';
+import {SCREENS} from '../screens';
 import {InstallBox} from './InstallBox';
 
-export function Hero() {
+interface HeroProps {
+  mod: string;
+  onSelect: (name: string) => void;
+}
+
+export function Hero({mod, onSelect}: HeroProps) {
+  const Screen = SCREENS[mod];
+  const info = MODS.find((m) => m.name === mod);
   return (
-    <header className="hero">
+    <header className="hero" id="demo">
       <section className="container stage-grid" aria-labelledby="hero-title">
         <article className="stage-copy">
           <Heading level={1} id="hero-title" className="title-display">
@@ -16,15 +23,19 @@ export function Hero() {
           <Text as="p" type="large" className="lead">
             Agent status, git, CI, Kubernetes and Jira, inside the Herdr app.
           </Text>
-          <InstallBox id="install-hero" initial="agent-radar" />
+          <InstallBox id="install-hero" mod={mod} onSelect={onSelect} />
           <Link href={REPO_URL} isStandalone hasUnderline>
             Read the source on GitHub
           </Link>
         </article>
-        <figure className="fig stage-fig">
-          <GeneralArrangement />
-          <figcaption className="visually-hidden">General arrangement of the Herdr window</figcaption>
-        </figure>
+        <section className="stage-fig" aria-live="polite" aria-label={`${mod} preview`}>
+          <Screen key={mod} />
+          {info && (
+            <Text as="p" color="secondary" className="stage-caption">
+              <b>{info.name}</b> {info.does} <Text type="code">{info.opens}</Text>
+            </Text>
+          )}
+        </section>
       </section>
     </header>
   );

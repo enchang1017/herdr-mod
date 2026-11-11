@@ -8,8 +8,7 @@
     "build": "tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node scripts/prerender.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
-    "theme": "astryx theme build theme-src/blueprint.ts --out src/themes/blueprint.css",
-    "diagrams": "vite build --ssr src/entry-diagrams.tsx --outDir dist-diagrams && node scripts/export-diagrams.mjs"
+    "theme": "astryx theme build theme-src/blueprint.ts --out src/themes/blueprint.css"
   },
   "dependencies": {
     "@astryxdesign/cli": "^0.7.13",

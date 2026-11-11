@@ -4,9 +4,9 @@ Ten mods and one layout for [Herdr](https://herdr.dev), the desktop app for term
 
 **Site:** [herdr-mod.goenchang.dev](https://herdr-mod.goenchang.dev)
 
-![General arrangement: the spaces-agents sidebar (1), the agent-radar drawer (2) and the picker-plus popup (5) at their shipped sizes in the Herdr window](docs/diagrams/general-arrangement.svg)
+![change-radar, simplified: repos with uncommitted, unpushed or unmerged work, with merge request and CI chips](docs/screens/change-radar.png)
 
-The diagrams in this README are schematic: each one shows a mod's layout and its real sizes from its `RECIPE.md`. They are not screenshots.
+The pictures in this README are simplified screens, not screenshots: each one shows a mod's real labels, buttons and size from its `RECIPE.md`, filled with sample data. The site shows the same screens; pick a mod there to switch.
 
 ## Install
 
@@ -44,7 +44,7 @@ Each folder has a `RECIPE.md`: a brief another agent can rebuild the mod from, w
 
 ### spaces-agents
 
-![spaces-agents sidebar, 268 px wide: space rows 30 px with an 18 px letter badge, tab rows 24 px, agent rows, and the quota block at the bottom](docs/diagrams/spaces-agents.svg)
+![spaces-agents sidebar, simplified](docs/screens/spaces-agents.png)
 
 One sidebar replaces Herdr's separate Spaces and Agents lists: each machine, its spaces, each space's tabs, and the agents in them with status, context use, CI state and age. Claude sessions whose tab was closed stay under "Lost agents" so you can revive them, a whole team at a time. It also turns JSON files dropped into the inbox folder into toasts, and folds teammate panes like an accordion.
 
@@ -52,13 +52,11 @@ The Claude quota block needs Claude Code's statusline to tee its input. [`spaces
 
 ### agent-radar
 
-![agent-radar drawer, 300 px wide, with a 32 px status column and a 36 px peek](docs/diagrams/agent-radar.svg)
+![agent-radar drawer, simplified](docs/screens/agent-radar.png)
 
 Hidden while nothing needs you. When an agent is blocked, or finished while you weren't looking, a 36 px tab peeks from the right edge with a count. Hover slides out the 300 px card: one row per agent with its program, name, age, space and tab. Click a row or press `⌘⇧U` to jump to the most urgent one. `⌘⇧A` opens a panel listing every agent by status.
 
 ### change-radar
-
-![change-radar window, 60 by 85 percent, with a 36 px top bar and one row per repo](docs/diagrams/change-radar.svg)
 
 A window with three tabs. **Change radar** lists every repo under the space's folder that has uncommitted, unpushed or unmerged work, with its merge request and pipeline; open one for its files, diffs, range compare and a short AI summary, then mark it reviewed or hand it to a reviewer agent. **Graph** draws one repo's history as lanes with its GitLab card. **Session** shows what one Claude session changed, repo by repo, and the pipelines and MR comments of what it pushed; a CI failure can go back to that agent with one click.
 
@@ -66,33 +64,43 @@ Settings live in `data/change-radar/settings.json` (`gitHost`, `reviewCommand`, 
 
 ### session-history
 
+![session-history window, simplified](docs/screens/session-history.png)
+
 A window, 70 by 75%, listing every past Claude Code and Codex session on this computer, newest first. Type to filter by title, folder or branch; after a pause it also searches transcript text and shows the matching line. Enter jumps to a session that is still running, or resumes it in a new tab.
 
 ### picker-plus
+
+![picker-plus popup, simplified](docs/screens/picker-plus.png)
 
 A 640 px popup, 40 px from the top: Herdr's Go to picker with the other windows of this repo on top. One `⌘P` jumps to a tab, space or agent, starts a new one, or opens k9s, Orbit, Git, Session history, Team, Jira or Open in IDE. Rows for mods you did not install still show; delete them from `MOD_ENTRIES`.
 
 ### team
 
+![team window, simplified](docs/screens/team.png)
+
 A launcher in four tabs. **Start dev** opens a Claude tab running your own `dev-lead` skill on a Jira key and plan link. **Review MR** has a GitLab merge request reviewed into a markdown report. **Agents** starts any herdr-core template (`reviewer`, `mr-reviewer`, `refactorer`, `tester` ship in [`team/templates`](team/templates)) on a repo, in the team tab or a fresh worktree. **Running** lists live team agents. Every launch is a full Claude session on your quota.
 
 ### jira
 
-![jira sprint board, 75 by 80 percent: sprint strip, one lane per story and 86 px sub-task cards](docs/diagrams/jira.svg)
+![jira sprint board, simplified](docs/screens/jira.png)
 
 Driven by the Atlassian CLI. Views: your open items, the active sprint as a board with one lane per story, in progress, to do, recent, the sprint as a list, or any JQL. An item opens in a drawer with its description, sub-tasks, links and comments. Moving, assigning or commenting first shows a confirm card with the exact `acli` command it will run. Set `project` in `data/jira/settings.json` for the board and sprint views.
 
 ### k9s
 
-![k9s window, 75 by 80 percent: a 32 px search field, deployment rows, and a detail drawer 45 percent wide](docs/diagrams/k9s.svg)
+![k9s find view, simplified](docs/screens/k9s.png)
 
 Type part of a deployment name to find it in any kube context, then Enter follows its logs across all pods. Browse pods, deployments, services, nodes, events and ingresses; a row opens a drawer with health, CPU and memory, events, YAML, logs and describe. Every context is read-only unless you list it in `data/k9s/settings.json`; on a listed context, delete, restart and scale ask first and go to an audit log.
 
 ### orbit
 
+![orbit window, simplified](docs/screens/orbit.png)
+
 A k9s-style window onto a local orbit dev environment: whether its daemon runs, the instances, and tabs for resources, logs, traces and SQL Server DB drift. One key opens a service's URL, another hands logs, a trace or a drifted database to a Claude session. Built for one specific `orbit` CLI and its daemon's JSON; it is of no use without them.
 
 ### open-ide
+
+![open-ide toasts, simplified](docs/screens/open-ide.png)
 
 No window, only a toast. `⌘⇧E` opens the focused terminal's folder in Rider when it (or its git root) holds a .NET solution, VS Code otherwise, and VS Code Remote-SSH when the terminal runs on another machine. macOS only.
 
@@ -124,20 +132,19 @@ Several mods read `~/.claude/sessions/<pid>.json` to match Claude terminals; ses
   mods/<mod>/        the mod itself: mod.json, main.js, icons/
 spaces-agents/layouts/spaces-agents.json
 team/templates/      herdr-core agent templates
-docs/diagrams/       the schematic SVGs in this README
+docs/screens/        the simplified screens in this README
 site/                the website
 ```
 
 ## The website
 
-`site/` is a Vite and React page built with the [Astryx](https://www.npmjs.com/package/@astryxdesign/core) design system on a Blueprint theme. It is prerendered to static HTML, so it reads without JavaScript.
+`site/` is a Vite and React page built with the [Astryx](https://www.npmjs.com/package/@astryxdesign/core) design system on a Blueprint theme. It is prerendered to static HTML, so it reads without JavaScript. Each mod's simplified screen lives in `site/src/screens/`.
 
 ```sh
 cd site
 npm install
 npm run dev        # local server
 npm run build      # dist/, prerendered
-npm run diagrams   # regenerate docs/diagrams/*.svg from the same drawings
 npm run theme      # rebuild the Astryx theme from theme-src/blueprint.ts
 ```
 

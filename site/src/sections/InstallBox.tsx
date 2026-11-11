@@ -25,13 +25,12 @@ function selectText(el: HTMLElement | null): void {
 }
 
 interface InstallBoxProps {
-  initial: string;
-  hasPicker?: boolean;
+  mod: string;
+  onSelect?: (name: string) => void;
   id: string;
 }
 
-export function InstallBox({initial, hasPicker = true, id}: InstallBoxProps) {
-  const [mod, setMod] = useState(initial);
+export function InstallBox({mod, onSelect, id}: InstallBoxProps) {
   const [state, setState] = useState<CopyState>('idle');
   const timer = useRef<number | undefined>(undefined);
   const code = useRef<HTMLElement>(null);
@@ -56,12 +55,12 @@ export function InstallBox({initial, hasPicker = true, id}: InstallBoxProps) {
 
   return (
     <section className="install" id={id} aria-label="Install prompt" data-state={state}>
-      {hasPicker && (
+      {onSelect && (
         <Selector
           label="Mod"
           size="lg"
           value={mod}
-          onChange={setMod}
+          onChange={onSelect}
           options={MODS.map((m) => ({value: m.name, label: m.name}))}
         />
       )}
