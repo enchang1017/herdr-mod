@@ -1,0 +1,30 @@
+{
+  "name": "site",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node scripts/prerender.mjs",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "theme": "astryx theme build theme-src/blueprint.ts --out src/themes/blueprint.css",
+    "diagrams": "vite build --ssr src/entry-diagrams.tsx --outDir dist-diagrams && node scripts/export-diagrams.mjs"
+  },
+  "dependencies": {
+    "@astryxdesign/cli": "^0.7.13",
+    "@astryxdesign/core": "^0.7.13",
+    "@astryxdesign/theme-neutral": "^0.7.13",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.90.0",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6"
+  }
+}
