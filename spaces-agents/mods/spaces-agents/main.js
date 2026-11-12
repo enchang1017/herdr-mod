@@ -4,7 +4,9 @@ import { agents, focused, nextCommand, notify, openOverlay, panes, playSound, pr
 import { GitTracker } from "./git.js";
 import { MachineList } from "./machines.js";
 import { ClaudeSessions } from "./claude.js";
-import { UsageTracker, quotaBlock } from "./usage.js";
+import { UsageTracker } from "./usage.js";
+import { PROVIDERS, ProviderQuota } from "./quota.js";
+import { QuotaView } from "./quota-view.js";
 import { Inbox } from "./inbox.js";
 import { Accordion, accordionOn } from "./accordion.js";
 import { compactRow, spaceRow } from "./rows.js";
@@ -19,6 +21,8 @@ import { KEY, assignColors, roleName, isOpen, narrow, setOpen, showShells, sound
 const TICK = 3000;
 const AWAY_TICKS = 5;
 const SETTLE_MS = 2000;
+const RPC_EVERY_MS = 2 * 60000;
+const AGY_EVERY_MS = 5 * 60000;
 
 const awake = () => window()?.active !== false;
 
@@ -32,6 +36,8 @@ export default class SpacesAgents extends View {
     this.machines = new MachineList();
     this.claude = new ClaudeSessions();
     this.usage = new UsageTracker();
+    this.providers = new ProviderQuota();
+    this.quotaView = new QuotaView();
     this.inbox = new Inbox();
     this.accordion = new Accordion();
     this.registry = new Registry();
@@ -48,6 +54,7 @@ export default class SpacesAgents extends View {
     this.claude.watch(cx);
     this.usage.refresh(this.claude.sessionIds(), cx);
     this.usage.watch(() => this.claude.sessionIds(), cx);
+    for (const name of PROVIDERS) this.providers.refresh(name, cx);
     this.inbox.start(cx);
     this.monitor = new HerdrMonitor();
     this.monitor.start(cx);
@@ -56,6 +63,8 @@ export default class SpacesAgents extends View {
     this.checkedAt = 0;
     cx.timer.every(30000, (cx) => { if (awake()) this.usage.refresh(this.claude.sessionIds(), cx); });
     cx.timer.every(15000, (cx) => { if (awake()) this.machines.refresh(cx); });
+    cx.timer.every(RPC_EVERY_MS, (cx) => { if (awake()) { this.providers.refresh("codex", cx); this.providers.refresh("grok", cx); } });
+    cx.timer.every(AGY_EVERY_MS, (cx) => { if (awake()) this.providers.refresh("agy", cx); });
     cx.timer.every(250, (cx) => this.checkNew(cx));
     cx.timer.every(TICK, (cx) => this.tick(cx));
     cx.timer.every(30000, (cx) => { if (this.hasAgents && awake()) cx.notify(); });
@@ -181,7 +190,7 @@ export default class SpacesAgents extends View {
 
   header(t, collapsed) {
     const shells = showShells();
-    const problem = this.claude.error || this.claude.watchError || this.usage.error || this.machines.error || this.inbox.error || this.accordion.error || this.registry.error || this.health.error;
+    const problem = this.claude.error || this.claude.watchError || this.usage.error || this.providers.error || this.machines.error || this.inbox.error || this.accordion.error || this.registry.error || this.health.error;
     return h_flex().h(31).pl(16).pr(10).gap(2).items_center().text_size(11.5).text_color(t.dim)
       .when(collapsed, (el) => el.pl(0).pr(0).justify_center())
       .when(!collapsed, (el) => el.child(div().flex_1().child("Spaces & Agents")))
@@ -226,6 +235,6 @@ export default class SpacesAgents extends View {
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always")
         .on_mouse_up("left", (_e, cx) => { this.drag.pressed = null; cx.notify(); })
         .children([...list, ...lost]))
-      .when(!collapsed, (el) => el.child(quotaBlock(this.usage, t, ctx.now, monitorLine(this.monitor, t))));
+      .when(!collapsed, (el) => el.child(this.quotaView.render({ usage: this.usage, providers: this.providers }, t, ctx.now, monitorLine(this.monitor, t))));
   }
 }

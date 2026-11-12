@@ -2,7 +2,8 @@
 
 One sidebar instead of Herdr's separate Spaces and Agents lists: each machine,
 its spaces, each space's tabs, and the agents in them with their status,
-context use, CI state and age, then your Claude quota at the bottom. Claude
+context use, CI state and age, then your Claude, Codex, Antigravity and Grok
+quota at the bottom. Claude
 sessions whose tab was closed stay listed under "Lost agents" so you can
 revive them, a whole team at a time, or reopen the last closed tab with
 `cmd-alt-t`. It also turns JSON files dropped into the inbox folder into
@@ -49,10 +50,14 @@ mod it was cloned from changes. Ships with the `spaces-agents` layout.
   one group per tab (`<space> · <tab>`, `Revive tab`), and per agent: Claude
   icon, name, how long ago it was seen, `lead` / `teammate` / machine / folder,
   and `Revive`, `Fork`, `Dismiss` buttons.
-- Footer: `Claude quota` with `5h` and `week` bars (4px, `accent`, `working`
-  from 80%, `blocked` from 95%), percent and reset time (`14:00`,
-  `Fri 09:00`), and `updated <n>m ago`; the block fades to 55% after 30 min.
-  Without data it reads `no data yet — open a Claude session`.
+- Footer: `Quota` with one row per provider (Claude, Codex, Antigravity,
+  Grok), its icon, then `5h` and `week` bars (3px, `accent`, `working` from
+  80%, `blocked` from 95%) and percent; `–` where a provider has no such
+  window. The tooltip holds plan, reset times (`14:00`, `Fri 09:00`) and
+  `updated <n>m ago`; a row fades to 55% after 30 min. Antigravity has a
+  chevron: collapsed it shows the highest of its groups, open it lists
+  Gemini, Cl/GPT and Argon (open state in `localStorage`). Providers with
+  neither data nor an error are hidden; Claude always shows.
 - Narrower than 160px it draws a compact rail: each space's number and a `·`
   or `●` in its status color.
 
@@ -137,7 +142,7 @@ mod it was cloned from changes. Ships with the `spaces-agents` layout.
   (with `sessionId`, `label`) makes the same mod render the agent popup.
   - `main.js`: timers 250ms new spaces and git, 3s tick (foreground query every
     tick while the window is active, every 15s otherwise), 15s machines, 30s
-    quota and age repaint; commands `accordion` and `reopen-tab`.
+    quota and age repaint, 2 min Codex and Grok quota, 5 min Antigravity; commands `accordion` and `reopen-tab`.
   - `tree.js`, `rows.js`: tab tree, agent rows, chips, space rows, drag,
     compact rail. `ship-chip.js`: CI chip from shared `change-radar.ship`
     (`{[sessionId]: {state, count}}`). `agent-menu.js`: the popup.
@@ -159,7 +164,10 @@ mod it was cloned from changes. Ships with the `spaces-agents` layout.
     `<app home>/data/spaces-agents/upstream/`, `upstream.json`.
   - `machines.js` (`hc machine ls|rm|add`, fold and reconnect state in
     `localStorage`), `git.js` (`git status --porcelain=v2 --branch`,
-    `rev-parse`, watches local repos), `usage.js`, `inbox.js`, `accordion.js`
+    `rev-parse`, watches local repos), `usage.js` (Claude), `quota.js`
+    (`quota-rpc.py codex|grok` JSON-RPC over stdio: `codex app-server`
+    `account/rateLimits/read`, `grok agent stdio` `_x.ai/billing`; `agy -p
+    /usage`), `quota-view.js`, `inbox.js`, `accordion.js`
     (`hc connect` `doc.get`, then `layout.resize`), `util.js`.
 - Shipped mods used: `workspace-chrome` (also its `terminal`, `square`,
   `layers`, `plus`, `chevron-*`, `branch`, `server`, `monitor` icons), `tabs`,
