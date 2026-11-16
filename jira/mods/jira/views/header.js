@@ -9,7 +9,7 @@ const BAR_WIDTH = 150;
 const BAR_MOTION = Object.freeze({ duration: 520, easing: "ease-out" });
 const CATEGORIES = ["done", "indeterminate", "new"];
 const CATEGORY_WORDS = { done: "done", indeterminate: "in progress", new: "to do" };
-const BOARD_HINTS = [["hjkl", "move"], ["\u{21b5}", "open"], ["space", "fold"], ["Z", "fold all"], ["[ ]", "move card"], ["L", "labels"], ["u", "mine"], ["x", "clear"], ["/", "search"], ["r", "refresh"], ["R", "remap"], ["1-7", "views"]];
+const BOARD_HINTS = [["hjkl", "move"], ["\u{21b5}", "open"], ["space", "fold"], ["Z", "fold all"], ["[ ]", "move card"], ["L", "labels"], ["u", "mine"], ["x", "clear"], ["/", "search"], ["r", "refresh"], ["R", "remap"], ["B", "board"], ["1-7", "views"]];
 const HINTS = [["j/k", "move"], ["\u{21b5}", "open"], ["esc", "close"], ["1-7", "views"], ["/", "search"], ["r", "refresh"], ["t", "status"], ["a", "assign"], ["m", "comment"], ["b", "branch"], ["d", "start dev"], ["o", "open"]];
 
 function counts(rows) {

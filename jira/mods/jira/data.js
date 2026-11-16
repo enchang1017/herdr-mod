@@ -18,7 +18,7 @@ export const CACHE_MS = LIST_TTL_MS;
 let lists = new Map();
 let details = new Map();
 let statusSets = new Map();
-let identity = { site: null, me: null };
+let identity = { site: null, me: null, boardInfo: null };
 let board = null;
 
 function newestOf(entries, limit) {
@@ -36,7 +36,7 @@ export function hydrate(data) {
   if (!data) return;
   lists = newestOf(new Map([...Object.entries(data.lists ?? {}), ...lists]), MAX_LISTS);
   details = newestOf(new Map([...Object.entries(data.details ?? {}), ...details]), MAX_DETAILS);
-  identity = { site: data.site ?? identity.site, me: data.me ?? identity.me };
+  identity = { site: data.site ?? identity.site, me: data.me ?? identity.me, boardInfo: identity.boardInfo ?? data.boardInfo ?? null };
   board = board ?? data.board ?? null;
 }
 
@@ -44,6 +44,11 @@ export const peekBoard = () => board;
 
 export function rememberBoard(entry) {
   board = entry;
+  touched();
+}
+
+export function forgetBoard() {
+  board = null;
   touched();
 }
 

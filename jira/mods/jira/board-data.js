@@ -1,7 +1,7 @@
 import { acli, parseJson } from "./acli.js";
 import { toRow, issuesOf, peekBoard, rememberBoard } from "./data.js";
-import { project, boardId, NEED_PROJECT } from "./settings.js";
-import { sprintJql } from "./queries.js";
+import { project, boardId, mode, isKanban, NEED_PROJECT } from "./settings.js";
+import { boardQueryOf } from "./queries.js";
 
 const FIELDS = "issuetype,key,summary,status,assignee,priority,labels";
 const LIMIT = "200";
@@ -9,8 +9,10 @@ const PARALLEL = 20;
 const BOARD_TTL_MS = 120000;
 const MAP_TTL_MS = 1800000;
 const SUBTASK = /sub-?task/i;
+const EPIC = /^epic$/i;
 
 export const isSubtask = (card) => SUBTASK.test(card?.type ?? "");
+const isEpic = (card) => EPIC.test(card?.type ?? "");
 
 function toCard(issue) {
   return Object.freeze({ ...toRow(issue), labels: Object.freeze([...(issue?.fields?.labels ?? [])].map(String)) });
@@ -38,6 +40,10 @@ async function activeSprint() {
   return toSprint(list[0]);
 }
 
+async function projectEpics() {
+  return search(`project = ${project()} AND issuetype = Epic ORDER BY Rank ASC`, "acli jira workitem search (epics)");
+}
+
 async function childKeys(storyKey) {
   const cards = await search(`parent = ${storyKey}`, `acli jira workitem search parent = ${storyKey}`);
   return [storyKey, Object.freeze(cards.map((one) => one.key))];
@@ -61,6 +67,7 @@ async function pooled(keys, task, onEach) {
 
 function needsMap(prev, items, force) {
   if (force === "remap" || !prev?.children || Date.now() - (prev.mappedAt ?? 0) > MAP_TTL_MS) return true;
+  if (isKanban()) return false;
   const mapped = new Set(Object.values(prev.children).flat());
   return items.some((one) => isSubtask(one) && !mapped.has(one.key));
 }
@@ -71,20 +78,42 @@ export function isBoardFresh(entry) {
 
 const NO_STEP = () => {};
 
-export async function fetchBoard(force, onStep = NO_STEP) {
+function sprintParents(items) {
+  return Promise.resolve(Object.freeze({ parents: items.filter((one) => !isSubtask(one)).map((one) => one.key), epics: null }));
+}
+
+async function kanbanParents(prev, remap) {
+  const epics = remap || !prev?.epics ? await projectEpics() : prev.epics;
+  return Object.freeze({ parents: epics.map((one) => one.key), epics: Object.freeze(epics) });
+}
+
+const boardSource = () => `${mode()}|${boardQueryOf(project())}`;
+
+export const currentBoard = () => previousOf();
+
+function previousOf() {
   const prev = peekBoard();
+  return prev && prev.source === boardSource() ? prev : null;
+}
+
+export async function fetchBoard(force, onStep = NO_STEP) {
+  const prev = previousOf();
   if (!force && isBoardFresh(prev)) return prev;
   if (!project()) throw new Error(NEED_PROJECT);
-  const sprintCall = activeSprint().catch((e) => { console.log(`jira: active sprint failed: ${e.message ?? e}`); return prev?.sprint ?? null; });
-  const items = await search(sprintJql(project()), "acli jira workitem search (sprint board)");
+  const kanban = isKanban();
+  const sprintCall = kanban ? Promise.resolve(null)
+    : activeSprint().catch((e) => { console.log(`jira: active sprint failed: ${e.message ?? e}`); return prev?.sprint ?? null; });
+  const found = await search(boardQueryOf(project()), "acli jira workitem search (board)");
+  const items = kanban ? found.filter((one) => !isEpic(one)) : found;
   const remap = needsMap(prev, items, force);
-  const stories = items.filter((one) => !isSubtask(one)).map((one) => one.key);
-  const partial = Object.freeze({ at: prev?.at ?? 0, mappedAt: prev?.mappedAt ?? 0, sprint: prev?.sprint ?? null, items: Object.freeze(items), children: prev?.children ?? Object.freeze({}) });
-  onStep(partial, remap ? { done: 0, total: stories.length } : null);
-  const mapping = remap ? pooled(stories, childKeys, (done, total) => onStep(null, { done, total })).then(Object.fromEntries) : Promise.resolve(prev.children);
+  const { parents, epics } = await (kanban ? kanbanParents(prev, remap) : sprintParents(items));
+  const base = { mode: mode(), source: boardSource(), sprint: prev?.sprint ?? null, epics, items: Object.freeze(items) };
+  const partial = Object.freeze({ ...base, at: prev?.at ?? 0, mappedAt: prev?.mappedAt ?? 0, children: prev?.children ?? Object.freeze({}) });
+  onStep(partial, remap ? { done: 0, total: parents.length } : null);
+  const mapping = remap ? pooled(parents, childKeys, (done, total) => onStep(null, { done, total })).then(Object.fromEntries) : Promise.resolve(prev.children);
   const [children, sprint] = await Promise.all([mapping, sprintCall]);
   const now = Date.now();
-  const entry = Object.freeze({ at: now, mappedAt: remap ? now : prev.mappedAt, sprint, items: Object.freeze(items), children: Object.freeze(children) });
+  const entry = Object.freeze({ ...base, at: now, mappedAt: remap ? now : prev.mappedAt, sprint, children: Object.freeze(children) });
   rememberBoard(entry);
   return entry;
 }

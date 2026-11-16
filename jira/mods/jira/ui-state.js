@@ -3,14 +3,14 @@ import { VIEWS, DEFAULT_JQL } from "./queries.js";
 import { errorText } from "./acli.js";
 
 const SHARED_KEY = "jira.ui";
-const NO_BOARD_FILTER = Object.freeze({ labels: Object.freeze([]), assignees: Object.freeze([]), onlyMine: false });
+const NO_BOARD_FILTER = Object.freeze({ labels: Object.freeze([]), epics: Object.freeze([]), assignees: Object.freeze([]), onlyMine: false });
 const EMPTY = Object.freeze({ view: "mine", jql: DEFAULT_JQL, drawerWidth: null, selected: null, boardFilter: NO_BOARD_FILTER, collapsed: Object.freeze([]) });
 
 const strings = (value) => Object.freeze(Array.isArray(value) ? value.filter((one) => typeof one === "string") : []);
 
 function validBoardFilter(value) {
   if (!value || typeof value !== "object") return NO_BOARD_FILTER;
-  return Object.freeze({ labels: strings(value.labels), assignees: strings(value.assignees), onlyMine: value.onlyMine === true });
+  return Object.freeze({ labels: strings(value.labels), epics: strings(value.epics), assignees: strings(value.assignees), onlyMine: value.onlyMine === true });
 }
 
 function validUi(saved) {

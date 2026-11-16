@@ -1,11 +1,13 @@
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { boardView, laneKey, scrollBy } from "../board-nav.js";
-import { contentHeight, laneHeight, cardTop, LANE_HEAD, LANE_GAP, CARD_H, CARD_GAP, CELL_PAD, COL_HEAD, BODY_TOP } from "../board-layout.js";
-import { OTHER_LANE } from "../board-model.js";
+import { contentHeight, laneHeight, cardTop, headOf, LANE_HEAD, LANE_GAP, CARD_H, CARD_GAP, CELL_PAD, COL_HEAD, BODY_TOP } from "../board-layout.js";
+import { OTHER_LANE, isKanbanEntry } from "../board-model.js";
 import * as board from "../board-controller.js";
+import { isKanban, project } from "../settings.js";
 import { boardHeader } from "./board-header.js";
 import { boardCard, labelChip, dragGhost } from "./board-card.js";
+import { button } from "./widgets.js";
 import { icon, typeIcon, statusPill, categoryColor, errorBox, emptyNote, shade, mono, spinner } from "./widgets.js";
 
 const MOTION = Object.freeze({ duration: 170, easing: "ease-out" });
@@ -78,8 +80,8 @@ function builtWindow(app) {
   return { top: app.state.boardScroll - viewH, bottom: app.state.boardScroll + viewH * 2 };
 }
 
-function cardRows(laneTop, cards, range) {
-  const base = cardTop(laneTop, 0);
+function cardRows(laneTop, cards, range, head) {
+  const base = cardTop(laneTop, 0, head);
   const first = Math.max(0, Math.ceil((range.top - base - CARD_H) / CARD_STEP));
   const last = Math.min(cards.length - 1, Math.floor((range.bottom - base) / CARD_STEP));
   return { first, shown: first > last ? [] : cards.slice(first, last + 1) };
@@ -88,7 +90,7 @@ function cardRows(laneTop, cards, range) {
 function cell(app, t, lane, cards, col, place) {
   const drag = app.state.drag;
   const isTarget = Boolean(drag?.moved) && app.state.dropCol === col && col !== drag?.from;
-  const { first, shown } = cardRows(place.top, cards, place.range);
+  const { first, shown } = cardRows(place.top, cards, place.range, headOf(lane));
   return v_flex().id(`jira-cell-${lane.id}-${col}`).flex_1().min_w(0).p(CELL_PAD).gap(CARD_GAP).rounded(8)
     .bg(isTarget ? shade(t.accent, "soft") : shade(t.muted, "subtle")).border_1()
     .border_color(isTarget ? t.accent : shade(t.muted, "clear")).when(isTarget, (el) => el.border_dashed())
@@ -103,7 +105,7 @@ function laneBox(app, t, lane, place) {
   const box = v_flex().id(`jira-lane-${lane.id}`).flex_none().h(height).overflow_hidden().transition("height", MOTION);
   if (place.top > place.range.bottom || place.top + height < place.range.top) return box;
   return box
-    .child(laneHeader(app, t, lane))
+    .when(!lane.flat, (el) => el.child(laneHeader(app, t, lane)))
     .child(h_flex().flex_none().pt(BODY_TOP).gap(6).items_start()
       .children(lane.cells.map((cards, col) => cell(app, t, lane, cards, col, place))));
 }
@@ -133,25 +135,34 @@ function lanesArea(app, t, view) {
     .child(dragGhost(app, t) ?? div());
 }
 
-function loadingNote(t, title) {
+function loadingNote(t, title, kanban) {
   return v_flex().mx(14).mt(14).px(14).py(16).gap(6).items_center().rounded(10).border_1().border_dashed().border_color(t.border)
     .child(spinner(t, title))
-    .child(div().text_size(11).text_color(t.dim).child("First load maps every story's sub-tasks; later opens come from the cache."));
+    .child(div().text_size(11).text_color(t.dim).child(kanban ? "First load maps every epic's cards; later opens come from the cache." : "First load maps every story's sub-tasks; later opens come from the cache."));
 }
 
 function mappingBar(app, t) {
   const p = app.state.boardProgress;
   if (!p?.total) return null;
   return h_flex().mx(14).mt(8).gap(8).items_center().text_size(11)
-    .child(spinner(t, `mapping sub-tasks ${p.done}/${p.total}`))
+    .child(spinner(t, `mapping ${isKanbanEntry(app.state.boardEntry) ? "epics" : "sub-tasks"} ${p.done}/${p.total}`))
     .child(div().flex_none().w(MAP_BAR_W).h(4).rounded(2).bg(t.border).overflow_hidden()
       .child(div().id("jira-map-fill").h_full().bg(t.accent).w(Math.round((p.done / p.total) * MAP_BAR_W)).transition("width", MOTION)));
 }
 
+function pickPrompt(app, t) {
+  return v_flex().mx(14).mt(14).px(14).py(18).gap(8).items_center().rounded(10).border_1().border_dashed().border_color(t.border)
+    .child(icon("square-kanban", 22, t.accent))
+    .child(div().text_size(12.5).font_semibold().text_color(t.foreground).child("No board chosen yet"))
+    .child(div().text_size(11).text_color(t.dim).child("Pick one and its project and Scrum or Kanban setup are read from Jira."))
+    .child(button(t, "jira-pick-board", "Choose a board", (_e, cx) => app.openPicker(cx), { primary: true, icon: "layers", hotkey: "B" }));
+}
+
 function emptyBoard(app, t) {
-  if (app.loadState().loading && !app.state.boardEntry) return loadingNote(t, "Reading the active sprint\u{2026}");
+  const kanban = isKanban();
+  if (app.loadState().loading && !app.state.boardEntry) return loadingNote(t, kanban ? "Reading the board\u{2026}" : "Reading the active sprint\u{2026}", kanban);
   if (app.state.boardEntry?.items.length) return emptyNote(t, "search", "No cards match these filters", "x clears labels/people/mine, esc clears search");
-  return emptyNote(t, "inbox", "Nothing in the active sprint", "");
+  return emptyNote(t, "inbox", kanban ? "Nothing on the board" : "Nothing in the active sprint", "");
 }
 
 export function boardBody(app, t) {
@@ -159,7 +170,8 @@ export function boardBody(app, t) {
   return v_flex().id("jira-board").flex_1().min_h(0).mx(10).mb(4).rounded(10).border_1().border_color(t.border).bg(t.background).overflow_hidden()
     .child(boardHeader(app, t))
     .child(mappingBar(app, t) ?? div())
-    .when(Boolean(app.loadState().error), (el) => el.child(errorBox(t, "jira-board-error", app.loadState().error, (_e, cx) => app.refresh(cx))))
-    .when(view.lanes.length > 0, (el) => el.child(columnRow(t, view)).child(lanesArea(app, t, view)))
-    .when(view.lanes.length === 0, (el) => el.child(emptyBoard(app, t)));
+    .when(!project(), (el) => el.child(pickPrompt(app, t)))
+    .when(Boolean(project()) && Boolean(app.loadState().error), (el) => el.child(errorBox(t, "jira-board-error", app.loadState().error, (_e, cx) => app.refresh(cx))))
+    .when(Boolean(project()) && view.lanes.length > 0, (el) => el.child(columnRow(t, view)).child(lanesArea(app, t, view)))
+    .when(Boolean(project()) && view.lanes.length === 0, (el) => el.child(emptyBoard(app, t)));
 }

@@ -84,7 +84,7 @@ A launcher in four tabs. **Start dev** opens a Claude tab running your own `dev-
 
 ![jira sprint board, simplified](docs/screens/jira.png)
 
-Driven by the Atlassian CLI. Views: your open items, the active sprint as a board with one lane per story, in progress, to do, recent, the sprint as a list, or any JQL. An item opens in a drawer with its description, sub-tasks, links and comments. Moving, assigning or commenting first shows a confirm card with the exact `acli` command it will run. Set `project` in `data/jira/settings.json` for the board and sprint views.
+Driven by the Atlassian CLI. Views: your open items, the active sprint as a board with one lane per story, in progress, to do, recent, the sprint as a list, or any JQL. An item opens in a drawer with its description, sub-tasks, links and comments. Moving, assigning or commenting first shows a confirm card with the exact `acli` command it will run. Press `B` to pick a board: its project and Scrum or Kanban setup are read from Jira, and Kanban boards show plain columns with epic tags and filters.
 
 ### k9s
 

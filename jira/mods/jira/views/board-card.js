@@ -1,6 +1,7 @@
 import { div } from "gpui-kit";
 import { v_flex, h_flex, HoverCard } from "gpui-base";
 import { CARD_H } from "../board-layout.js";
+import { NO_EPIC } from "../board-model.js";
 import * as board from "../board-controller.js";
 import { icon, typeLook, typeIcon, priorityIcon, statusPill, avatar, shade, mono } from "./widgets.js";
 
@@ -20,6 +21,15 @@ export function labelChip(t, name, size = 9.5) {
     .text_size(size).font_semibold().text_color(color).child(name);
 }
 
+const epicColor = (t, epic) => (epic.key === NO_EPIC ? t.dim : labelColor(t, epic.key));
+
+function epicChip(t, epic) {
+  const color = epicColor(t, epic);
+  return h_flex().flex_none().max_w(150).h(16).px(5).gap(3).items_center().rounded(4).bg(shade(color, "subtle")).border_1().border_color(shade(color, "border"))
+    .child(icon("zap", 9, color))
+    .child(div().min_w(0).truncate().text_size(9.5).font_semibold().text_color(color).child(epic.summary));
+}
+
 function fact(t, label, value, color) {
   return h_flex().gap(8).items_center()
     .child(div().w(60).flex_none().text_color(t.dim).child(label))
@@ -33,6 +43,7 @@ function hoverContent(t, card, lane) {
       .child(div().flex_1()).child(statusPill(t, card.status, card.category)))
     .child(div().text_size(12).child(card.summary))
     .when(Boolean(lane.story) && lane.story.key !== card.key, (el) => el.child(fact(t, "parent", `${lane.story?.key} ${lane.story?.summary}`, t.ansi2)))
+    .when(Boolean(card.epic), (el) => el.child(fact(t, "epic", card.epic?.summary ?? "", card.epic ? epicColor(t, card.epic) : t.dim)))
     .child(fact(t, "assignee", card.assignee || "Unassigned", card.assignee ? t.foreground : t.dim))
     .child(fact(t, "priority", card.priority || "none"))
     .when(card.labels.length > 0, (el) => el.child(h_flex().gap(4).flex_wrap().children(card.labels.map((one) => labelChip(t, one)))))
@@ -75,7 +86,7 @@ export function boardCard(app, t, card, col, lane) {
     .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); board.startDrag(app, card.key, col, e, cx); })
     .on_click((_e, cx) => app.clickRow(card.key, cx))
     .child(div().flex_none().h(30).overflow_hidden().text_size(11.5).font_semibold().text_color(t.foreground).child(card.summary))
-    .child(h_flex().flex_none().h(16).gap(4).items_center().overflow_hidden().children(card.labels.map((one) => labelChip(t, one))))
+    .child(h_flex().flex_none().h(16).gap(4).items_center().overflow_hidden().when(Boolean(card.epic), (el) => el.child(epicChip(t, card.epic))).children(card.labels.map((one) => labelChip(t, one))))
     .child(footer(t, card, look.isSelected));
   return withHover(app, t, element, card, lane);
 }

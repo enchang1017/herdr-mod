@@ -1,7 +1,8 @@
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import * as board from "../board-controller.js";
-import { progressOf, daysLeft } from "../board-model.js";
+import { progressOf, daysLeft, isKanbanEntry, NO_EPIC } from "../board-model.js";
+import { project, boardName } from "../settings.js";
 import { labelColor } from "./board-card.js";
 import { icon, iconButton, avatar, kbd, shade } from "./widgets.js";
 
@@ -10,9 +11,9 @@ const MOTION = Object.freeze({ duration: 520, easing: "ease-out" });
 const GOAL_CHARS = 80;
 
 function progressBar(t, entry) {
-  const { done, total } = progressOf(entry);
+  const { done, total, unit } = progressOf(entry);
   const ratio = total ? done / total : 0;
-  const tip = `${done} of ${total} sub-tasks done`;
+  const tip = `${done} of ${total} ${unit} done`;
   return h_flex().id("jira-board-progress").flex_none().gap(7).items_center().tooltip(tip)
     .child(div().flex_none().w(BAR_WIDTH).h(7).rounded(4).bg(t.raised).border_1().border_color(t.border).overflow_hidden()
       .child(div().id("jira-board-progress-fill").h_full().w(Math.round(ratio * BAR_WIDTH)).bg(t.ansi2).transition("width", MOTION)))
@@ -34,19 +35,41 @@ function goalText(goal) {
   return goal.length > GOAL_CHARS ? `${goal.slice(0, GOAL_CHARS - 1)}\u{2026}` : goal;
 }
 
+function stripTitle(entry, sprint) {
+  const name = boardName() || project();
+  if (isKanbanEntry(entry)) return `${name} \u{b7} Kanban`;
+  return sprint?.name ? `${sprint.name}${boardName() ? ` \u{b7} ${boardName()}` : ""}` : name ? `${name} \u{b7} Active sprint` : "Active sprint";
+}
+
 function sprintStrip(app, t) {
   const entry = app.state.boardEntry;
   const sprint = entry?.sprint;
   const all = board.filterChips(app).length;
   return h_flex().flex_none().h(36).px(12).gap(10).items_center().border_b(1).border_color(t.border)
     .child(icon("square-kanban", 15, t.accent))
-    .child(div().flex_none().text_size(12.5).font_bold().text_color(t.foreground).child(sprint?.name ?? "Active sprint"))
+    .child(div().flex_none().text_size(12.5).font_bold().text_color(t.foreground).child(stripTitle(entry, sprint)))
     .child(daysChip(t, sprint))
     .child(h_flex().id("jira-board-goal").flex_1().min_w(0).gap(5).items_center().when(Boolean(sprint?.goal), (el) => el.tooltip(sprint?.goal ?? ""))
       .when(Boolean(sprint?.goal), (el) => el.child(icon("target", 12, t.ansi5)).child(div().flex_1().min_w(0).truncate().text_size(11).text_color(t.muted).child(goalText(sprint?.goal ?? "")))))
     .when(Boolean(entry), (el) => el.child(progressBar(t, entry)))
-    .child(iconButton(t, "jira-board-all", app.state.collapsed.length ? "chevrons-up-down" : "chevrons-down-up", (_e, cx) => board.toggleAllLanes(app, cx),
-      { hotkey: "Z", tooltip: app.state.collapsed.length ? "Expand all lanes" : "Collapse all lanes", disabled: !all && !entry }));
+    .child(iconButton(t, "jira-board-pick", "layers", (_e, cx) => app.openPicker(cx), { label: "Board", hotkey: "B", tooltip: "Switch board" }))
+    .when(!isKanbanEntry(entry), (el) => el.child(iconButton(t, "jira-board-all", app.state.collapsed.length ? "chevrons-up-down" : "chevrons-down-up", (_e, cx) => board.toggleAllLanes(app, cx),
+      { hotkey: "Z", tooltip: app.state.collapsed.length ? "Expand all lanes" : "Collapse all lanes", disabled: !all && !entry })));
+}
+
+function epicToggle(app, t, chip, index) {
+  const isOn = (app.state.boardFilter.epics ?? []).includes(chip.key);
+  const isFocused = app.state.labelFocus === index;
+  const color = chip.key === NO_EPIC ? t.muted : labelColor(t, chip.key);
+  return h_flex().id(`jira-be-${chip.key}`).flex_none().max_w(200).h(22).px(8).gap(5).items_center().rounded(5).cursor_pointer()
+    .bg(isOn ? color : shade(color, "subtle")).border_1().border_color(isFocused ? t.foreground : shade(color, isOn ? "strong" : "border"))
+    .hover((s) => s.bg(isOn ? shade(color, "strong") : shade(color, "soft")))
+    .tooltip(`${chip.key === NO_EPIC ? "" : `${chip.key} `}${chip.name}`)
+    .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
+    .on_click((_e, cx) => board.toggleEpic(app, chip.key, cx))
+    .child(icon(isOn ? "check" : "zap", 11, isOn ? t.background : color))
+    .child(div().min_w(0).truncate().text_size(11).font_semibold().text_color(isOn ? t.background : color).child(chip.name))
+    .child(div().flex_none().text_size(10).text_color(isOn ? t.background : t.dim).child(String(chip.count)));
 }
 
 function labelToggle(app, t, chip, index) {
@@ -83,10 +106,14 @@ function focusHint(app, t) {
 
 function filterBar(app, t) {
   const chips = board.filterChips(app);
-  const { labels, assignees, onlyMine: mine } = app.state.boardFilter;
-  const active = Boolean(labels.length || assignees.length || mine);
+  const { labels, epics = [], assignees, onlyMine: mine } = app.state.boardFilter;
+  const active = Boolean(labels.length || epics.length || assignees.length || mine);
+  const epicChips = chips.map((chip, index) => [chip, index]).filter(([chip]) => chip.kind === "epic");
   return h_flex().flex_none().min_h(38).px(12).py(6).gap(6).items_center().flex_wrap().border_b(1).border_color(t.border)
     .when(app.state.labelFocus !== null, (el) => el.bg(shade(t.accent, "subtle")))
+    .when(epicChips.length > 0, (el) => el.child(icon("zap", 13, t.dim))
+      .children(epicChips.map(([chip, index]) => epicToggle(app, t, chip, index)))
+      .child(div().flex_none().w(1).h(18).mx(4).bg(t.border)))
     .child(icon("tag", 13, t.dim))
     .children(chips.map((chip, index) => [chip, index]).filter(([chip]) => chip.kind === "label").map(([chip, index]) => labelToggle(app, t, chip, index)))
     .child(div().flex_none().w(1).h(18).mx(4).bg(t.border))
@@ -94,7 +121,7 @@ function filterBar(app, t) {
     .children(chips.map((chip, index) => [chip, index]).filter(([chip]) => chip.kind === "assignee").map(([chip, index]) => assigneeToggle(app, t, chip, index)))
     .child(div().flex_none().w(1).h(18).mx(4).bg(t.border))
     .child(iconButton(t, "jira-board-mine", "user", (_e, cx) => board.toggleMine(app, cx), { label: "Only mine", hotkey: "u", active: mine, disabled: !app.state.me, tooltip: app.state.me ? `Only ${app.state.me}` : "Learning who you are\u{2026}" }))
-    .when(active, (el) => el.child(iconButton(t, "jira-board-clear", "x", (_e, cx) => board.clearFilters(app, cx), { label: "Clear", hotkey: "x", tooltip: "Clear label, people and mine filters" })))
+    .when(active, (el) => el.child(iconButton(t, "jira-board-clear", "x", (_e, cx) => board.clearFilters(app, cx), { label: "Clear", hotkey: "x", tooltip: "Clear epic, label, people and mine filters" })))
     .child(div().flex_1())
     .child(focusHint(app, t));
 }

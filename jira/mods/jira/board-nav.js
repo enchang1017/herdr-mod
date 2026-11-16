@@ -1,5 +1,5 @@
 import { columnsOf, lanesOf, visibleLanes, cellsOf, OTHER_LANE } from "./board-model.js";
-import { laneTops, cardTop, revealed, clampScroll, LANE_HEAD, CARD_H } from "./board-layout.js";
+import { laneTops, cardTop, revealed, clampScroll, headOf, LANE_HEAD, CARD_H } from "./board-layout.js";
 import * as act from "./actions.js";
 
 const LANE_PREFIX = "lane:";
@@ -22,7 +22,7 @@ export function boardView(app) {
   const columns = columnsOf(entry?.items ?? []);
   const collapsed = new Set(app.state.collapsed);
   const lanes = visibleLanes(lanesOf(entry), filtersOf(app))
-    .map((lane) => ({ ...lane, collapsed: collapsed.has(lane.id), cells: cellsOf(lane, columns) }));
+    .map((lane) => ({ ...lane, collapsed: !lane.flat && collapsed.has(lane.id), cells: cellsOf(lane, columns) }));
   return { entry, columns, lanes, tops: laneTops(lanes) };
 }
 
@@ -50,7 +50,7 @@ function stops(view, col) {
   return view.lanes.flatMap((lane, index) => {
     const at = lane.collapsed ? -1 : nearestCol(lane, col);
     const cards = at < 0 ? [] : lane.cells[at].map((_card, row) => ({ lane: index, col: at, row }));
-    return [{ lane: index, header: true }, ...cards];
+    return lane.flat ? cards : [{ lane: index, header: true }, ...cards];
   });
 }
 
@@ -61,7 +61,7 @@ function stopKey(view, stop) {
 
 function select(app, view, stop, cx) {
   const key = stopKey(view, stop);
-  const top = stop.header ? view.tops[stop.lane] : cardTop(view.tops[stop.lane], stop.row);
+  const top = stop.header ? view.tops[stop.lane] : cardTop(view.tops[stop.lane], stop.row, headOf(view.lanes[stop.lane]));
   const height = stop.header ? LANE_HEAD : CARD_H;
   const scroll = clampScroll(revealed(app.state.boardScroll, top, height, app.state.boardViewH), view.lanes, app.state.boardViewH);
   app.set({ selected: key, boardScroll: scroll, ...(stop.header ? {} : { boardCol: stop.col }) });

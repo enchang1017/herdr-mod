@@ -2,6 +2,9 @@ import { props, closeOverlay } from "herdr";
 import { VIEWS } from "./queries.js";
 import * as act from "./actions.js";
 import { boardKey } from "./board-keys.js";
+import { closePicker, movePick, chooseHighlighted } from "./board-picker.js";
+
+const PICK_STEP = { up: -1, down: 1, k: -1, j: 1 };
 
 const ISSUE_KEYS = { c: act.copyKey, b: act.copyBranch, o: act.browse, d: act.startDev };
 const WRITE_KEYS = { t: "transition", m: "comment" };
@@ -17,7 +20,9 @@ function placeKey(app, e, cx) {
 
 export function escape(app, cx) {
   const { action, drawer, filter } = app.state;
-  if (action && action.stage !== "running") {
+  if (app.state.picker) {
+    if (!app.state.picker.saving) closePicker(app, cx);
+  } else if (action && action.stage !== "running") {
     act.cancelAction(app, cx);
     if (app.typing.size) app.blur(cx);
   } else if (app.typing.size) app.blur(cx);
@@ -68,6 +73,23 @@ export function rowKey(app, key, cx) {
   return issueKey(app, key, cx);
 }
 
+function isBoardPickKey(e) {
+  return e.key_char === "B" || (e.key === "b" && Boolean(e.modifiers?.shift));
+}
+
+function pickerKey(app, e, cx) {
+  const typing = app.typing.has("picker");
+  const step = typing ? (e.key === "up" ? -1 : e.key === "down" ? 1 : 0) : PICK_STEP[e.key] ?? 0;
+  if (step) return movePick(app, step, cx);
+  if (typing) return false;
+  if (e.key === "enter") return chooseHighlighted(app, cx);
+  if (e.key === "/") {
+    app.pickerInput.focus();
+    return true;
+  }
+  return true;
+}
+
 export function onKey(app, e, cx) {
   if (placeKey(app, e, cx)) {
     cx.stop_propagation();
@@ -81,7 +103,19 @@ export function onKey(app, e, cx) {
     cx.notify();
     return;
   }
+  if (app.state.picker) {
+    if (pickerKey(app, e, cx)) {
+      cx.stop_propagation();
+      cx.notify();
+    }
+    return;
+  }
   if (app.typing.size) return;
+  if (isBoardPickKey(e)) {
+    app.openPicker(cx);
+    cx.stop_propagation();
+    return;
+  }
   if (boardKey(app, e, cx) || rowKey(app, e.key, cx)) {
     cx.stop_propagation();
     cx.notify();

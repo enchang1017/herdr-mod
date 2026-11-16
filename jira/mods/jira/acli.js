@@ -14,8 +14,12 @@ export function errorText(error) {
   return String(error?.message ?? error);
 }
 
+const GENERIC_FAILURE = /^error: command execution failed$/i;
+
 function acliError(result, what) {
-  const text = (result.stderr || result.stdout || "").trim().replace(/^\u{2717}\s*/u, "").split("\n")[0];
+  const lines = `${result.stderr ?? ""}\n${result.stdout ?? ""}`.split("\n")
+    .map((line) => line.trim().replace(/^\u{2717}\s*/u, "")).filter(Boolean);
+  const text = lines.find((line) => !GENERIC_FAILURE.test(line)) ?? lines[0] ?? "";
   const error = new Error(text ? `${what}: ${text}` : `${what} exited ${result.code}`);
   return Object.assign(error, { auth: UNAUTHORIZED.test(text) });
 }

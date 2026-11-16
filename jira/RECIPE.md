@@ -68,9 +68,19 @@ with the exact `acli` command it will run.
   `RUNS EXACTLY` and the command, Cancel `esc`, Confirm `↵`.
 - **Login card** when `acli` has no Jira login: the command
   `acli jira auth login --web`, Copy and Retry.
-- **Board and sprint without a project**: BOARD and SPRINT show the error box
-  "Set "project" in data/jira/settings.json (for example {"project": "PROJ"})
-  to use the board and sprint views." with Retry; the other views work.
+- **Board and sprint without a project**: BOARD shows a "No board chosen yet"
+  card with a Choose a board button, and the board picker opens by itself the
+  first time BOARD loads in a session; SPRINT shows the error "Pick a board (B),
+  or set "boardId" or "project" in data/jira/settings.json, to use the board
+  and sprint views."; the other views work.
+- **Board picker** (`B` in any view, or the Board button on the BOARD strip):
+  a 560 px panel 64 px from the top over a dimmed window, listing every board
+  from `acli jira board search` sorted by name: a check on the current one,
+  name, location, project key and a scrum / kanban / simple badge. Typing
+  filters (every word must appear in name, location, project, type or id);
+  up/down (or j/k when the field is not focused) move, Enter or a click uses
+  the board, Esc or a click outside closes it. At most 12 rows show around the
+  highlighted one, with "N more" above and below.
 - **Footer** (24px): key hints for the current view, or the last message in
   `ansi3` (most clear after 4s).
 
@@ -79,12 +89,31 @@ with the exact `acli` command it will run.
 - Settings: `<herdr home>/data/jira/settings.json`, read once when the
   window opens, before the first load (invalid JSON or values are logged and
   the defaults are used):
-  - `project` (default empty): the Jira project key for BOARD and SPRINT.
-    Empty: those two views show the "Set project" error; MINE, IN PROGRESS,
-    TO DO, RECENT and JQL work.
-  - `boardId` (default empty): the Jira board id, used only for the active
-    sprint's name, goal and dates on BOARD (the cards come from JQL). Empty:
-    the sprint strip says `Active sprint` with no dates.
+  - `boardId` (default empty): the Jira board, normally written by the board
+    picker. From it the mod reads the board's name and project
+    (`acli jira board view` and `list-projects`) and whether it is Scrum or
+    Kanban: a `scrum` or `kanban` board type is used as is; a `simple`
+    (team-managed) board is Kanban when `list-sprints` answers "does not
+    support sprints", Scrum otherwise. The result is kept in the disk cache
+    for a day; `R` reads it again. Also used for the active sprint's name, goal
+    and dates on a Scrum BOARD.
+  - `project` (default empty): overrides the project read from the board.
+    With neither `project` nor `boardId`, BOARD and SPRINT ask for a board;
+    MINE, IN PROGRESS, TO DO, RECENT and JQL work.
+  - `mode` (default empty, read from the board, `scrum` without a board):
+    `scrum` or `kanban` overrides the detected mode. Kanban: BOARD and SPRINT
+    read `project = <project> AND issuetype not in subTaskIssueTypes() AND
+    (statusCategory != Done OR resolved >= -14d) ORDER BY Rank ASC`, never ask
+    for sprints, and BOARD is plain status columns with no lanes: every card
+    carries its epic as a tag (found with `parent = <epic>` for every
+    `issuetype = Epic` in the project; others read "No epic"), the filter bar
+    gets one chip per epic, and the strip reads `<board name> · Kanban`
+    without the collapse-all button. Any other value is logged and ignored.
+  - `boardJql` (default empty): replaces the BOARD and SPRINT JQL in either
+    mode; a project is still required.
+  - Choosing a board in the picker writes `boardId` and drops `project`,
+    `mode` and `boardJql` (they belonged to the old board); other keys stay.
+    It also clears the board's label, epic, people and mine filters.
   - `planUrlPattern` (default empty): a regex (JavaScript syntax, no
     slashes); every match in an item's description and comments is a plan
     link. Empty: no plan detection, no PLAN section, Start dev hands over
@@ -155,6 +184,7 @@ with the exact `acli` command it will run.
   IN PROGRESS / TO DO the same with `statusCategory = "In Progress"` / `"To Do"`;
   RECENT `issuekey in issueHistory() ORDER BY lastViewed DESC`;
   BOARD and SPRINT `project = <project> AND sprint in openSprints() ORDER BY Rank ASC`
+  (kanban mode and `boardJql` change it, see Settings)
   (limits 50, SPRINT 100, BOARD 200). An empty JQL field runs MINE's JQL.
   `settings.js` reads the settings file.
 - Writes (`writes.js`), the only commands that change Jira:
@@ -167,7 +197,8 @@ with the exact `acli` command it will run.
 - `data.js` holds the in-memory caches (lists 60s, details 5 min, statuses
   10 min); `disk-cache.js` writes them to `data/jira/cache.json`
   (`version: 2`, newest 20 lists and 60 details, site, your display name, the
-  board) at most once a second. `board-data.js`, `board-model.js`,
+  board, the detected board) at most once a second. `board-source.js` lists
+  and detects boards, `board-picker.js` drives the picker. `board-data.js`, `board-model.js`,
   `board-nav.js`, `board-layout.js`, `board-controller.js`, `board-keys.js`
   build and drive the board; `keys.js` the rest of the keys.
 - `text.js`: Jira rich text to plain text, plan link detection, sprint and
@@ -229,11 +260,15 @@ with the exact `acli` command it will run.
 - `t` on an item and a status shows a confirm card reading
   `acli jira workitem transition --key <KEY> --status <name> --yes`; Esc
   cancels and the item is unchanged in Jira.
-- Without `project`, BOARD shows the "Set project" error and MINE still
-  lists items; with `project` (and `boardId`) set,
+- Without `project` or `boardId`, BOARD shows "No board chosen yet" and
+  opens the picker, and MINE still lists items; picking a board writes
+  `boardId` to the settings file and BOARD loads it. With a Scrum board,
   BOARD shows the active sprint's name, one lane per story with its
   sub-tasks in status columns; dragging a card to another column, or `]`,
   opens the same confirm card.
+- With a Kanban board (or `"mode": "kanban"`), BOARD shows `<board name> · Kanban` and status
+  columns with no lane headers, each card has an epic tag, picking an epic
+  chip keeps only its cards, and no `list-sprints` call runs.
 - Closing and reopening the window shows rows before the spinner finishes,
   and `data/jira/cache.json` exists.
 - `d` opens the Team window on Start dev with the key filled in, and the

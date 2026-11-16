@@ -8,6 +8,8 @@ export const BODY_TOP = 4;
 const BORDER = 1;
 const MARGIN = 12;
 
+export const headOf = (lane) => (lane?.flat ? 0 : LANE_HEAD);
+
 export function deepest(lane) {
   return Math.max(1, ...lane.cells.map((cards) => cards.length));
 }
@@ -18,7 +20,7 @@ export function bodyHeight(lane) {
 }
 
 export function laneHeight(lane) {
-  return LANE_HEAD + (lane.collapsed ? 0 : bodyHeight(lane));
+  return headOf(lane) + (lane.collapsed ? 0 : bodyHeight(lane));
 }
 
 export function laneTops(lanes) {
@@ -29,8 +31,8 @@ export function contentHeight(lanes) {
   return lanes.reduce((sum, lane) => sum + laneHeight(lane) + LANE_GAP, 0);
 }
 
-export function cardTop(laneTop, row) {
-  return laneTop + LANE_HEAD + BODY_TOP + BORDER + CELL_PAD + row * (CARD_H + CARD_GAP);
+export function cardTop(laneTop, row, head = LANE_HEAD) {
+  return laneTop + head + BODY_TOP + BORDER + CELL_PAD + row * (CARD_H + CARD_GAP);
 }
 
 export function clampScroll(value, lanes, viewHeight) {

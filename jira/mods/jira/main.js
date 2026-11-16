@@ -1,4 +1,4 @@
-import { View } from "gpui-kit";
+import { View, div } from "gpui-kit";
 import { v_flex, InputState, TextareaState, VirtualListScrollHandle } from "gpui-base";
 import { theme, nextCommand, props } from "herdr";
 import { authStatus, errorText, LOGIN_COMMAND, useSleep } from "./acli.js";
@@ -21,6 +21,9 @@ import { mono } from "./views/widgets.js";
 import { boardBody } from "./views/board.js";
 import { loadBoard, showCachedBoard } from "./board-controller.js";
 import { boardView, visibleCards, moveVertical } from "./board-nav.js";
+import { resolveBoard } from "./board-source.js";
+import * as picker from "./board-picker.js";
+import { boardPicker } from "./views/board-picker.js";
 
 const MOD = "jira";
 const TICK_MS = 1000;
@@ -35,7 +38,7 @@ function initialState(ui) {
     filter: "", selected: ui.value.selected, drawer: null, lastKey: null, detail: { key: "", loading: false, error: "" }, action: null,
     statuses: { id: "", list: [], loading: false, error: "" }, drawerWidth: ui.value.drawerWidth, message: ui.error,
     boardEntry: null, boardFilter: ui.value.boardFilter, collapsed: ui.value.collapsed, boardCol: 0, labelFocus: null,
-    boardScroll: 0, boardProgress: null, boardViewH: 0, boardWheelAt: 0, drag: null, dropCol: null,
+    boardScroll: 0, boardProgress: null, boardViewH: 0, boardWheelAt: 0, drag: null, dropCol: null, picker: null,
   };
 }
 
@@ -44,7 +47,7 @@ export default class Jira extends View {
     const ui = loadUiState();
     this.state = initialState(ui);
     this.hovered = null; this.drawerArea = null; this.resize = null; this.typing = new Set(); this.prefetching = false;
-    this.hidden = !isShown(MOD); this.ready = false;
+    this.hidden = !isShown(MOD); this.ready = false; this.pickerOffered = false;
     this.handle = cx.focus_handle();
     this.rowScroll = VirtualListScrollHandle.new();
     this.makeInputs(ui.value);
@@ -60,6 +63,7 @@ export default class Jira extends View {
     await loadSettings();
     this.ready = true;
     hydrate(await readDiskCache());
+    await resolveBoard(false).catch((e) => console.log(`jira: board detection failed: ${errorText(e)}`));
     const id = knownIdentity();
     this.set({ site: this.state.site ?? id.site, me: this.state.me ?? id.me });
     this.showCached();
@@ -80,7 +84,10 @@ export default class Jira extends View {
     this.jqlInput = InputState.new({ placeholder: "JQL, Enter runs it", value: saved.jql });
     this.jqlInput.on("submit", (_e, cx) => this.runJql(cx));
     this.commentInput = TextareaState.new({ placeholder: "Write a comment\u{2026}", rows: 4 });
-    [["filter", this.filterInput], ["jql", this.jqlInput], ["comment", this.commentInput]].forEach(([name, input]) => {
+    this.pickerInput = InputState.new({ placeholder: "board name, project key or type" });
+    this.pickerInput.on("change", (_e, cx) => picker.filterChanged(this, cx));
+    this.pickerInput.on("submit", (_e, cx) => picker.chooseHighlighted(this, cx));
+    [["filter", this.filterInput], ["jql", this.jqlInput], ["comment", this.commentInput], ["picker", this.pickerInput]].forEach(([name, input]) => {
       input.on("focus", (_e, cx) => { this.typing = new Set([...this.typing, name]); cx.notify(); });
       input.on("blur", (_e, cx) => { this.typing = new Set([...this.typing].filter((one) => one !== name)); cx.notify(); });
     });
@@ -277,6 +284,14 @@ export default class Jira extends View {
     return true;
   }
 
+  offerPicker(cx) {
+    if (this.pickerOffered || this.state.picker) return;
+    this.pickerOffered = true;
+    picker.openPicker(this, cx);
+  }
+
+  openPicker(cx) { return picker.openPicker(this, cx); }
+
   retryAuth(cx) {
     this.set({ auth: "unknown" });
     this.load(cx, true);
@@ -364,11 +379,12 @@ export default class Jira extends View {
 
   render() {
     const t = theme();
-    return v_flex().id("jira").track_focus(this.handle).size_full().min_h(0).font_family(mono()).bg(t.chrome).text_color(t.foreground).text_size(12)
+    return v_flex().id("jira").track_focus(this.handle).relative().size_full().min_h(0).font_family(mono()).bg(t.chrome).text_color(t.foreground).text_size(12)
       .on_key_down((e, cx) => onKey(this, e, cx))
       .child(header(this, t))
       .child(v_flex().flex_1().min_h(0).child(this.body(t)))
-      .child(keyHint(this, t));
+      .child(keyHint(this, t))
+      .child(boardPicker(this, t) ?? div());
   }
 
   async close() {

@@ -1,4 +1,4 @@
-import { project, NEED_PROJECT } from "./settings.js";
+import { project, isKanban, boardJql, NEED_PROJECT } from "./settings.js";
 
 const MINE = "assignee = currentUser()";
 const LIMIT = 50;
@@ -15,7 +15,14 @@ export const VIEWS = Object.freeze([
 
 export const DEFAULT_JQL = VIEWS[0].jql;
 
+const KANBAN_DONE_DAYS = 14;
+
 export const sprintJql = (key) => `project = ${key} AND sprint in openSprints() ORDER BY Rank ASC`;
+
+const kanbanJql = (key) =>
+  `project = ${key} AND issuetype not in subTaskIssueTypes() AND (statusCategory != Done OR resolved >= -${KANBAN_DONE_DAYS}d) ORDER BY Rank ASC`;
+
+export const boardQueryOf = (key) => boardJql() || (isKanban() ? kanbanJql(key) : sprintJql(key));
 
 export function viewOf(key) {
   return VIEWS.find((one) => one.key === key) ?? VIEWS[0];
@@ -23,6 +30,6 @@ export function viewOf(key) {
 
 export function queryOf(key, customJql) {
   const view = viewOf(key);
-  if (view.sprint) return project() ? { jql: sprintJql(project()), limit: view.limit } : { jql: "", limit: view.limit, problem: NEED_PROJECT };
+  if (view.sprint) return project() ? { jql: boardQueryOf(project()), limit: view.limit } : { jql: "", limit: view.limit, problem: NEED_PROJECT };
   return { jql: view.jql ?? (customJql.trim() || DEFAULT_JQL), limit: view.limit };
 }

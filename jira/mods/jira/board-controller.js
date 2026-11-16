@@ -1,7 +1,8 @@
 import { errorText } from "./acli.js";
-import { peekBoard } from "./data.js";
-import { fetchBoard } from "./board-data.js";
-import { lanesOf, labelsOf, assigneesOf, columnIndexOf } from "./board-model.js";
+import { fetchBoard, currentBoard } from "./board-data.js";
+import { resolveBoard } from "./board-source.js";
+import { project, boardId } from "./settings.js";
+import { lanesOf, labelsOf, epicsOf, assigneesOf, columnIndexOf } from "./board-model.js";
 import { boardView, ensureSelection, selectedLaneId, issueKeyOf, laneKey, isLaneKey } from "./board-nav.js";
 import { clampScroll } from "./board-layout.js";
 import { loadOf, patchLoad } from "./loads.js";
@@ -9,7 +10,7 @@ import * as act from "./actions.js";
 
 const DRAG_START_PX = 5;
 const BOARD = "board";
-const NO_FILTER = Object.freeze({ labels: Object.freeze([]), assignees: Object.freeze([]), onlyMine: false });
+const NO_FILTER = Object.freeze({ labels: Object.freeze([]), epics: Object.freeze([]), assignees: Object.freeze([]), onlyMine: false });
 
 export { NO_FILTER };
 
@@ -19,7 +20,7 @@ function adopt(app, entry) {
 }
 
 export function showCachedBoard(app) {
-  const entry = peekBoard();
+  const entry = currentBoard();
   if (entry && !app.state.boardEntry) adopt(app, entry);
 }
 
@@ -30,13 +31,15 @@ function afterBoard(app, cx) {
 }
 
 export function loadBoard(app, cx, force) {
-  const cached = peekBoard();
+  const cached = currentBoard();
   if (cached) adopt(app, cached);
+  if (!project() && !boardId()) app.offerPicker(cx);
   if (loadOf(app, BOARD).loading) return;
   patchLoad(app, BOARD, { loading: true, triedAt: Date.now() });
   cx.spawn(async (cx) => {
     try {
       if (await app.ensureAuth()) {
+        await resolveBoard(force === "remap");
         const onStep = (partial, progress) => {
           if (partial && app.state.view === "board") adopt(app, partial);
           app.set({ boardProgress: progress });
@@ -69,17 +72,23 @@ function setFilter(app, patch, cx) {
 const toggled = (list, value) => (list.includes(value) ? list.filter((one) => one !== value) : [...list, value]);
 
 export function toggleLabel(app, name, cx) { setFilter(app, { labels: toggled(app.state.boardFilter.labels, name) }, cx); }
+export function toggleEpic(app, key, cx) { setFilter(app, { epics: toggled(app.state.boardFilter.epics ?? [], key) }, cx); }
 export function toggleAssignee(app, name, cx) { setFilter(app, { assignees: toggled(app.state.boardFilter.assignees, name) }, cx); }
 export function toggleMine(app, cx) { setFilter(app, { onlyMine: !app.state.boardFilter.onlyMine }, cx); }
 export function clearFilters(app, cx) { setFilter(app, NO_FILTER, cx); }
 
 export function filterChips(app) {
   const entry = app.state.boardEntry;
-  return [...labelsOf(entry).map((one) => ({ kind: "label", ...one })), ...assigneesOf(entry).map((one) => ({ kind: "assignee", ...one }))];
+  return [
+    ...epicsOf(entry).map((one) => ({ kind: "epic", ...one })),
+    ...labelsOf(entry).map((one) => ({ kind: "label", ...one })),
+    ...assigneesOf(entry).map((one) => ({ kind: "assignee", ...one })),
+  ];
 }
 
 export function toggleChip(app, chip, cx) {
-  if (chip?.kind === "label") toggleLabel(app, chip.name, cx);
+  if (chip?.kind === "epic") toggleEpic(app, chip.key, cx);
+  else if (chip?.kind === "label") toggleLabel(app, chip.name, cx);
   else if (chip?.kind === "assignee") toggleAssignee(app, chip.name, cx);
 }
 
