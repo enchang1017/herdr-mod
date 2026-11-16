@@ -1,3 +1,4 @@
+import * as fs from "fs/promises";
 import { hc, home, readTextFile, watchFolder, panes, shared, setShared } from "herdr";
 
 const STALE_MS = 8000;
@@ -9,7 +10,7 @@ const signatureOf = (p) => `${p.program?.key ?? ""}|${p.cwd ?? ""}`;
 
 function isClaude(fg) {
   const program = fg?.argv?.[0] ?? "";
-  return (program.split("/").pop() ?? "").startsWith("claude");
+  return (program.replace(/\\/g, "/").split("/").pop() ?? "").startsWith("claude");
 }
 
 function parseJson(text) {
@@ -98,6 +99,10 @@ export class ClaudeWatch {
     cx.spawn(async (cx) => {
       try {
         for (;;) {
+          if (!(await fs.exists(sessionsDir()))) {
+            await cx.sleep(30000);
+            continue;
+          }
           await watchFolder(sessionsDir());
           if (await this.readSessions()) cx.notify();
         }

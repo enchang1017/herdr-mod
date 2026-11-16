@@ -1,6 +1,6 @@
 import { View, div } from "gpui-kit";
 import { v_flex, InputState, TextareaState, VirtualListScrollHandle } from "gpui-base";
-import { theme, nextCommand, props } from "herdr";
+import { theme, nextCommand, props, checking } from "herdr";
 import { authStatus, errorText, LOGIN_COMMAND, useSleep } from "./acli.js";
 import { searchIssues, whoAmI, needsDetail, viewIssue, cachedDetail, CACHE_MS, hydrate, peekList, knownIdentity, rememberIdentity } from "./data.js";
 import { readDiskCache, flushDiskCache } from "./disk-cache.js";
@@ -51,6 +51,7 @@ export default class Jira extends View {
     this.handle = cx.focus_handle();
     this.rowScroll = VirtualListScrollHandle.new();
     this.makeInputs(ui.value);
+    if (checking()) return;
     cx.timer.every(TICK_MS, (cx) => this.tick(cx));
     cx.timer.every(CLOCK_MS, (cx) => { if (isShown(MOD)) cx.notify(); });
     cx.timer.after(FOCUS_DELAY_MS, () => this.handle.focus());
@@ -109,7 +110,7 @@ export default class Jira extends View {
       if (command === "focus") this.handle.focus();
       else if (command === "refresh") this.refreshAll(cx);
       else if (command === "escape") escape(this, cx);
-      else if (command === "dock" && props()?.overlay) this.togglePlace(cx);
+      else if (command === "dock") this.togglePlace(cx);
       else if (command === "float" && !props()?.overlay) this.togglePlace(cx);
       else if (command === "tab") this.openTab(cx);
       else if (command === "down" || command === "up") this.move(command === "down" ? 1 : -1, cx);

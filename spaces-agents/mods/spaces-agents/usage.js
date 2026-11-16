@@ -1,3 +1,4 @@
+import * as fs from "fs/promises";
 import { home, readTextFile, watchFolder } from "herdr";
 
 const usageDir = () => `${home()}/.claude/herdr-usage`;
@@ -62,6 +63,10 @@ export class UsageTracker {
     cx.spawn(async (cx) => {
       try {
         for (;;) {
+          if (!(await fs.exists(usageDir()))) {
+            await cx.sleep(30000);
+            continue;
+          }
           await watchFolder(usageDir());
           this.refresh(ids(), cx);
         }

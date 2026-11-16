@@ -1,4 +1,5 @@
 import * as fs from "fs/promises";
+import { isWindows, windows } from "./windows.js";
 import { appHome, exec, readTextFile, spaces, terminals, writeTextFile } from "herdr";
 import { transcriptPath } from "./transcript.js";
 import { freshRemoved, mergeRegistry, parseRegistry, registryText, tombstone, withoutRemoved } from "./tombstones.js";
@@ -146,8 +147,11 @@ export class Registry {
     cx.spawn(async (cx) => {
       try {
         const pids = entries.map((e) => e.pid).filter((p) => Number.isInteger(p)).join(" ");
-        const r = await exec("sh", ["-c", CHECK, "sh", pids, ...entries.map((e) => e.transcript)]);
-        const lines = r.stdout.split("\n");
+        const r = isWindows()
+          ? await windows("registry", JSON.stringify(entries.map(({ pid, transcript }) => ({ pid, transcript }))))
+          : await exec("sh", ["-c", CHECK, "sh", pids, ...entries.map((e) => e.transcript)]);
+        if (r.code !== 0) throw new Error((r.stderr || r.stdout).trim() || `process check exited ${r.code}`);
+        const lines = r.stdout.split(/\r?\n/);
         this.alive = new Set(lines.filter((l) => l.startsWith("pid ")).map((l) => Number(l.slice(4))));
         this.files = new Set(lines.filter((l) => l.startsWith("file ")).map((l) => l.slice(5)));
         this.checkedAt = Date.now();

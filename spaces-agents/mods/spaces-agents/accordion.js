@@ -1,3 +1,4 @@
+import { isWindows, windows } from "./windows.js";
 import { exec, focused, panes, run, setShared, shared, terminals } from "herdr";
 
 const KEY_ON = "spaces-agents.accordion";
@@ -64,7 +65,9 @@ const same = (a, b) => Boolean(a) && a.px === b.px && (a.weight === undefined ||
   : Math.abs(a.weight - b.weight) < 0.001);
 
 async function readRoot(tabId) {
-  const r = await exec("sh", ["-c", `printf '%s\\n' '${REQUEST}' | hc connect`]);
+  const r = isWindows()
+    ? await windows("connect", REQUEST)
+    : await exec("sh", ["-c", `printf '%s\\n' '${REQUEST}' | hc connect`]);
   if (r.code !== 0) throw new Error(`hc connect exited ${r.code}: ${r.stderr.trim()}`);
   const reply = JSON.parse(r.stdout.split("\n").find((line) => line.trim()) ?? "{}");
   if (reply.error) throw new Error(`doc.get failed: ${reply.error.message}`);

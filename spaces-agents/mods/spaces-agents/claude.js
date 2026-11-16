@@ -1,3 +1,4 @@
+import * as fs from "fs/promises";
 import { hc, home, readTextFile, terminals, watchFolder } from "herdr";
 import { agentName, roleName } from "./util.js";
 
@@ -8,7 +9,7 @@ const sessionsDir = () => `${home()}/.claude/sessions`;
 
 function isClaude(fg) {
   const program = fg?.argv?.[0] ?? "";
-  return (program.split("/").pop() ?? "").startsWith("claude");
+  return (program.replace(/\\/g, "/").split("/").pop() ?? "").startsWith("claude");
 }
 
 function parseForeground(stdout) {
@@ -144,6 +145,10 @@ export class ClaudeSessions {
     cx.spawn(async (cx) => {
       try {
         for (;;) {
+          if (!(await fs.exists(sessionsDir()))) {
+            await cx.sleep(30000);
+            continue;
+          }
           await watchFolder(sessionsDir());
           if (await this.readSessions()) cx.notify();
         }

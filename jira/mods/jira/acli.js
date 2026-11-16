@@ -1,4 +1,4 @@
-import { exec } from "herdr";
+import { exec, window } from "herdr";
 
 const ACLI = "acli";
 const MAX_IN_FLIGHT = 6;
@@ -89,5 +89,8 @@ export async function authStatus() {
 }
 
 export function openUrl(url) {
-  return exec("open", [url]);
+  if (!/^https?:\/\//i.test(url)) return Promise.reject(new Error("Only HTTP(S) links can be opened"));
+  const platform = window().platform;
+  if (platform === "windows") return exec("rundll32.exe", ["url.dll,FileProtocolHandler", url]);
+  return exec(platform === "macos" ? "open" : "xdg-open", [url]);
 }

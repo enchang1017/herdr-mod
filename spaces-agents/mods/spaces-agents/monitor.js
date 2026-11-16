@@ -1,3 +1,4 @@
+import { isWindows, windows } from "./windows.js";
 import { div } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { exec, window } from "herdr";
@@ -17,7 +18,7 @@ const commandName = (comm) => comm.trim().split("/").pop();
 const PARENT_PID = "echo $PPID";
 
 async function findPid() {
-  const r = await exec("/bin/sh", ["-c", PARENT_PID]);
+  const r = isWindows() ? await windows("parent", "") : await exec("/bin/sh", ["-c", PARENT_PID]);
   const pid = Number.parseInt(r.stdout.trim(), 10);
   if (r.code !== 0 || !Number.isInteger(pid) || pid <= 1) throw new Error(`could not read Herdr's pid (sh exited ${r.code}: ${(r.stderr || r.stdout).trim() || "no output"})`);
   return pid;
@@ -39,6 +40,7 @@ function parseAll(stdout, pid) {
 }
 
 async function sample(pid, withChildren) {
+  if (isWindows()) return JSON.parse((await windows("monitor", JSON.stringify({ pid, withChildren }))).stdout);
   if (!withChildren) {
     const r = await exec("/bin/ps", ["-o", "pcpu=,rss=", "-p", String(pid)]);
     if (r.code !== 0) throw new Error(`ps exited ${r.code}: ${(r.stderr || "").trim() || "no output"}`);

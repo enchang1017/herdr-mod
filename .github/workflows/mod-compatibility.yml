@@ -1,0 +1,40 @@
+name: Mod compatibility
+
+on:
+  pull_request:
+    paths:
+      - agent-radar/**
+      - spaces-agents/**
+      - picker-plus/**
+      - jira/**
+      - tests/**
+      - .github/workflows/mod-compatibility.yml
+  push:
+    branches: [main]
+    paths:
+      - agent-radar/**
+      - spaces-agents/**
+      - picker-plus/**
+      - jira/**
+      - tests/**
+      - .github/workflows/mod-compatibility.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: node --experimental-vm-modules --test tests/mod-compatibility.test.mjs
+      - run: python -W error::ResourceWarning -m unittest discover -s tests -p test_windows_helpers.py -v
