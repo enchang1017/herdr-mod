@@ -1,3 +1,5 @@
+import * as fs from "fs/promises";
+import { isWindows, windows, windowsArgs } from "./windows.js";
 import { appHome, exec, notify, readTextFile, writeTextFile } from "herdr";
 import { registryDir } from "./registry.js";
 
@@ -30,8 +32,7 @@ async function shell(script, args) {
 }
 
 async function isInstalled(name) {
-  const ran = await exec("test", ["-d", modDir(name)]).catch(() => null);
-  return ran?.code === 0;
+  return fs.exists(`${modDir(name)}/main.js`);
 }
 
 async function installedClones() {
@@ -54,12 +55,19 @@ function checkPrompt(clone, error) {
   ].join("\n\n");
 }
 
+const psQuote = (value) => "'" + value.replace(/'/g, "''") + "'";
+const windowsCommand = (mode, payload) => ["pwsh", ...windowsArgs(mode, payload).map(psQuote)].join(" ");
+
 function updatePrompt({ clone, builtin }) {
+  const sync = isWindows()
+    ? windowsCommand("snapshot", JSON.stringify({ source: modDir(builtin), destination: snapshotDir(builtin), replace: true }))
+    : `${RSYNC} ${modDir(builtin)}/ ${snapshotDir(builtin)}/`;
+  const hash = isWindows() ? windowsCommand("hash", modDir(builtin)) : hashCommand(builtin);
   return [
     `The built-in Herdr mod "${builtin}" changed since our clone "${clone}" was based on it. Read ${appHome()}/AGENTS.md first.`,
     `Old base (snapshot): ${snapshotDir(builtin)}\nNew built-in: ${modDir(builtin)}\nClone: ${modDir(clone)}`,
     `Three-way merge: apply the built-in's changes (old base -> new built-in) into the clone while keeping our changes (old base -> clone, which live in extras.js and the other added files). Run \`herdr-app check ${modDir(clone)}\` until it passes and report what was merged.`,
-    `Only after the check passes, update the snapshot to the new built-in with \`${RSYNC} ${modDir(builtin)}/ ${snapshotDir(builtin)}/\` and set mods.${builtin}.sha256 in ${upstreamPath()} to the output of \`${hashCommand(builtin)}\`. Touch nothing else.`,
+    `Only after the check passes, update the snapshot to the new built-in with \`${sync}\` and set mods.${builtin}.sha256 in ${upstreamPath()} to the output of \`${hash}\`. Touch nothing else.`,
   ].join("\n\n");
 }
 
@@ -73,11 +81,14 @@ async function upstreamProblems(clones) {
   let mods = data.mods;
   const problems = [];
   for (const pair of clones) {
-    const sha256 = await shell(HASH, [modDir(pair.builtin)]);
+    const sha256 = isWindows()
+      ? (await windows("hash", modDir(pair.builtin))).stdout.trim()
+      : await shell(HASH, [modDir(pair.builtin)]);
     const known = mods[pair.builtin];
     if (known && known.sha256 !== sha256) problems.push(updateProblem(pair));
     if (known) continue;
-    await shell(`mkdir -p "$2" && ${RSYNC} "$1/" "$2/"`, [modDir(pair.builtin), snapshotDir(pair.builtin)]);
+    if (isWindows()) await windows("snapshot", JSON.stringify({ source: modDir(pair.builtin), destination: snapshotDir(pair.builtin) }));
+    else await shell(`mkdir -p "$2" && ${RSYNC} "$1/" "$2/"`, [modDir(pair.builtin), snapshotDir(pair.builtin)]);
     mods = { ...mods, [pair.builtin]: { clone: pair.clone, sha256, recordedAt: new Date().toISOString() } };
   }
   if (mods !== data.mods) await writeTextFile(upstreamPath(), `${JSON.stringify({ ...data, version: 1, mods }, null, 2)}\n`, text);

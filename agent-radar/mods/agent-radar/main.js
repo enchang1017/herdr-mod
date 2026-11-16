@@ -1,5 +1,5 @@
 import { View, div } from "gpui-kit";
-import { theme, props, placement, closeOverlay, nextCommand, setAgentOrder, focused } from "herdr";
+import { theme, props, placement, closeOverlay, nextCommand, setAgentOrder, focused, checking } from "herdr";
 import { collect, needsLook, signature } from "./model.js";
 import { jump } from "./ui.js";
 import { ClaudeWatch, trackUnseen, unseen } from "./claude.js";
@@ -19,6 +19,7 @@ export default class AgentRadar extends View {
     this.handle = cx.focus_handle();
     this.claude = new ClaudeWatch();
     this.lastClaude = {};
+    if (checking()) return;
     this.claude.refresh(cx, true);
     this.claude.watch(cx);
     cx.timer.every(FOREGROUND_MS, (cx) => this.claude.refresh(cx, true));

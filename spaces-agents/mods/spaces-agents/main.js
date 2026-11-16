@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { agents, focused, nextCommand, notify, openOverlay, panes, playSound, props, run, setAgentOrder, setShared, spaces, terminals, theme, window } from "herdr";
+import { agents, focused, nextCommand, notify, openOverlay, panes, playSound, props, run, setAgentOrder, setShared, spaces, terminals, theme, window, checking } from "herdr";
 import { GitTracker } from "./git.js";
 import { MachineList } from "./machines.js";
 import { ClaudeSessions } from "./claude.js";
@@ -42,13 +42,17 @@ export default class SpacesAgents extends View {
     this.accordion = new Accordion();
     this.registry = new Registry();
     this.lost = new LostAgents(this.registry, this.machines, cx.focus_handle());
-    this.registry.load(cx);
+
     this.health = new HealthCheck();
-    this.health.start(cx);
+
     this.shown = new Set(spaces().map((s) => s.id));
     this.born = {};
     this.drag = { pressed: null, over: null };
     this.ticks = 0;
+    this.monitor = new HerdrMonitor();
+    if (checking()) return;
+    this.registry.load(cx);
+    this.health.start(cx);
     this.machines.refresh(cx);
     this.claude.refresh(panes(), true, cx);
     this.claude.watch(cx);
@@ -56,7 +60,6 @@ export default class SpacesAgents extends View {
     this.usage.watch(() => this.claude.sessionIds(), cx);
     for (const name of PROVIDERS) this.providers.refresh(name, cx);
     this.inbox.start(cx);
-    this.monitor = new HerdrMonitor();
     this.monitor.start(cx);
     this.listen(cx);
     this.dirty = true;

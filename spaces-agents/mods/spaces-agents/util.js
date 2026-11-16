@@ -33,7 +33,7 @@ export function place(s, ps) {
 
 export const where = (s, ps) => JSON.stringify([s.machine ?? null, place(s, ps)]);
 
-export const base = (path) => (path ?? "").replace(/\/+$/, "").split("/").pop();
+export const base = (path) => (path ?? "").replace(/\\/g, "/").replace(/\/+$/, "").split("/").pop();
 
 export function tone(t, status) {
   return t[status] ?? t.unknown;

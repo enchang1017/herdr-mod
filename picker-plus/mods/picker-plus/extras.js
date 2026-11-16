@@ -45,7 +45,7 @@ async function focusedSessionId() {
   try {
     const got = await hc(["get", address, "--json"]);
     const fg = got.code === 0 ? JSON.parse(got.stdout).foreground : null;
-    if (!fg?.pid || !(fg.argv?.[0] ?? "").split("/").pop().startsWith("claude")) return null;
+    if (!fg?.pid || !(fg.argv?.[0] ?? "").replace(/\\/g, "/").split("/").pop().startsWith("claude")) return null;
     const id = JSON.parse((await readTextFile(`${home()}/.claude/sessions/${fg.pid}.json`)) ?? "{}").sessionId;
     return typeof id === "string" && /^[\w-]+$/.test(id) ? id : null;
   } catch (e) {

@@ -74,7 +74,13 @@ async function rpc(name) {
 }
 
 async function probeAgy(now) {
-  const r = await exec("agy", ["-p", "/usage", "--print-timeout", "40s"], { cwd: home(), timeout: 60000 });
+  let r;
+  try {
+    r = await exec("agy", ["-p", "/usage", "--print-timeout", "40s"], { cwd: home(), timeout: 60000 });
+  } catch (error) {
+    if (/os error 2|no such file|program not found|system cannot find/i.test(message(error))) return null;
+    throw error;
+  }
   if (r.code !== 0) throw new Error(`agy /usage exited ${r.code}: ${(r.stderr || r.stdout).trim().slice(0, 200) || "no output"}`);
   const data = parseAgy(r.stdout, now);
   if (!data) throw new Error(`agy /usage printed no quota rows: ${r.stdout.trim().slice(0, 200) || "empty"}`);

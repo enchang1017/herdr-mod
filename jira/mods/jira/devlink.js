@@ -1,4 +1,5 @@
-import { exec, run, openOverlay, setShared } from "herdr";
+import * as fs from "fs/promises";
+import { appHome, exec, run, openOverlay, setShared } from "herdr";
 import { KEY, errorText } from "./acli.js";
 
 const TEAM_WINDOW = Object.freeze({ mod: "team", kind: "window", key: "team-panel", width: 0.55, height: 0.8 });
@@ -12,6 +13,7 @@ async function windowOpen(mod) {
 
 export async function startDev(issue) {
   if (!KEY.test(issue.key)) throw new Error(`Not a Jira key: ${issue.key}`);
+  if (!(await fs.exists(`${appHome()}/mods/team/main.js`))) throw new Error("Start dev requires the Team mod, which is not installed.");
   const request = Object.freeze({ jira: issue.key, plan: issue.plan?.[0] ?? "", at: Date.now() });
   setShared(REQUEST_KEY, request);
   const open = await windowOpen("team").catch((e) => {
